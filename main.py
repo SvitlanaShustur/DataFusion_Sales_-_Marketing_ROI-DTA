@@ -171,3 +171,12 @@ df = clean_marketing_data(df_raw)
 
 # 3) Друкуємо результат
 print(df)
+
+'''
+Що ти отримуєш на виході (після clean_marketing_data)
+DataFrame з колонками:
+month — дата, округлена до початку місяця (наприклад 2023-07-01)
+channel — стандартизована назва каналу (Google Ads / Facebook / …)
+spend_amount — витрати як число float (або NaN, якщо некоректно)
+negative_spend_flag — True, якщо вхідні витрати були < 0
+'''
