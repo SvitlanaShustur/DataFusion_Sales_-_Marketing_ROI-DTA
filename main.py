@@ -1,5 +1,9 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+import db_sql as db
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 monthly_category_sgl = '''
 SELECT 
@@ -33,8 +37,6 @@ LIMIT 3
 '''
 
 
-import pandas as pd
-import numpy as np
 
 def load_marketing_csv(csv_path: str) -> pd.DataFrame:
     """
@@ -160,18 +162,6 @@ def clean_marketing_data(df_raw: pd.DataFrame) -> pd.DataFrame:
     return clean
 
 
-# --- Використання функцій ---
-csv_path = "marketing_spend.csv"
-
-# 1) Завантажуємо сирі дані
-df_raw = load_marketing_csv(csv_path)
-
-# 2) Чистимо дані
-df = clean_marketing_data(df_raw)
-
-# 3) Друкуємо результат
-print(df)
-
 '''
 Що ти отримуєш на виході (після clean_marketing_data)
 DataFrame з колонками:
@@ -180,3 +170,25 @@ channel — стандартизована назва каналу (Google Ads /
 spend_amount — витрати як число float (або NaN, якщо некоректно)
 negative_spend_flag — True, якщо вхідні витрати були < 0
 '''
+def main():
+    # --- Використання функцій ---
+    csv_path = "marketing_spend.csv"
+
+    # 1) Завантажуємо сирі дані
+    df_raw = load_marketing_csv(csv_path)
+
+    # 2) Чистимо дані
+    df = clean_marketing_data(df_raw)
+
+    # 3) Друкуємо результат
+    print(df)
+
+    orders_sql_pact = "orders.sql"
+    pg_url = os.getenv("POSTGRES_URL")
+    pg_engine = db.get_postgres_engine(pg_url)
+    orders = db.load_orders_postgres(pg_engine)
+    print(orders)
+
+
+if __name__ == "__main__":
+    main()

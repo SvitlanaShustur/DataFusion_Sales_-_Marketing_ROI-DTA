@@ -16,6 +16,7 @@ cur = conn.cursor()
 with open('orders_sqlite.sql', 'r', encoding='utf-8') as f:
     sql_script = f.read()
 
+
 # 4) ВИКОНУЄМО SQL-СЦЕНАРІЙ
 # executescript() потрібен тоді, коли в файлі багато SQL-команд одразу,
 # розділених крапкою з комою ; (наприклад CREATE TABLE + багато INSERT).
