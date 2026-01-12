@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS orders;
+
 CREATE TABLE orders (
     order_id SERIAL PRIMARY KEY,
     customer_id INT,

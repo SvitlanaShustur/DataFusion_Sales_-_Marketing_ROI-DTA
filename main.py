@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import db_sql as db
 import os
+from sqlalchemy import text
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -178,16 +179,78 @@ def main():
     df_raw = load_marketing_csv(csv_path)
 
     # 2) Чистимо дані
-    df = clean_marketing_data(df_raw)
+    df_marketing_clean = clean_marketing_data(df_raw)
 
     # 3) Друкуємо результат
-    print(df)
+    print(df_marketing_clean)
 
     orders_sql_pact = "orders.sql"
     pg_url = os.getenv("POSTGRES_URL")
     pg_engine = db.get_postgres_engine(pg_url)
-    orders = db.load_orders_postgres(pg_engine)
+
+    try:
+        with open(orders_sql_pact, "r", encoding='uft-8') as f:
+            orders_sql = f.read()
+        # print(orders_sql)
+
+        with pg_engine.begin() as conn:
+            for s in orders_sql.split(";"):
+                s = s.strip()
+                if s: 
+                    conn.execute(text(orders_sql))
+
+    #     pd.read_sgl(orders_sql, con=pg_engine) # створення таблиці, якщо вона існує, то команда протіститься у виконанні
+    except Exception as e:
+        print(e) 
+
+    orders = db.load_orders_postgres(pg_engine) #  виводить результати запиту з файлу db_sql
     print(orders)
+
+    def agg_sales_monthly(orders_df: pd.DataFrame) -> pd.DataFrame:
+        df = orders_df.copy()
+        df['month'] = df["order_date"].dt.to_period("M").dt.to_timestamp()
+        monthly_sales = df.groupby("month", as_index=False).agg(
+            order_count = ("order_id", "count"),
+            total_sales = ("order_amount", "sum")
+        )
+        return monthly_sales
+    monthly_sales = agg_sales_monthly(orders)
+    #print(monthly_sales)
+    monthly_sales.to_csv("monthly_sales.csv")
+
+    def merged_sales_marketing(df_marketing_clean: pd.DataFrame, monthly_sales: pd.DataFrame) -> pd.DataFrame:
+        df_marketing_clean = (
+            df_marketing_clean.groupby('month', as_index=False).agg(
+                marketing_spend = ("spend_amount", "sum")
+            )
+        )
+        merged = monthly_sales.merge(df_marketing_clean, on="month", how="left")
+        return merged
+    sales_marketing = merged_sales_marketing(df_marketing_clean, monthly_sales)
+    # print(sales_marketing)
+    sales_marketing.to_csv("sales_marketing.csv")
+ 
+
+    #ROI
+    # ROI по місяцях: ROI = total_sales / marketing_spend (якщо витрати > 0)
+    def calc_monthly_roi(sales_marketing: pd.DataFrame) -> pd.DataFrame:
+        df = sales_marketing.copy()
+
+        # Рахуємо ROI тільки там, де marketing_spend > 0, інакше ставимо NaN
+        df["roi"] = np.where(
+            df["marketing_spend"] > 0,
+            df["total_sales"] / df["marketing_spend"],
+            np.nan
+        )
+
+        # Повертаємо потрібні колонки
+        return df[["month", "total_sales", "marketing_spend", "roi"]]
+
+    # Створюємо датафрейм з ROI
+    monthly_roi_df = calc_monthly_roi(sales_marketing)
+
+    # Зберігаємо у CSV
+    monthly_roi_df.to_csv("monthly_roi.csv", index=False)
 
 
 if __name__ == "__main__":
